@@ -1,5 +1,5 @@
 // >>> APNI UPI ID YAHAN LAGAO <<<
-export const UPI_ID = 'yourname@bank';
+export const UPI_ID = 'sunny122005@fam';
 export const PAYEE_NAME = 'Your Name';
 export const PRICE = 100;      // rupees
 export const DAYS = 30;        // subscription length
