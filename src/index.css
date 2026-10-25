@@ -1,0 +1,13 @@
+@tailwind base;@tailwind components;@tailwind utilities;
+html{scroll-behavior:smooth}
+body{font-family:Inter,system-ui,"Segoe UI",Arial,sans-serif;color:#fff;background:
+ radial-gradient(60rem 40rem at 85% -10%,rgba(229,9,20,.28),transparent 60%),
+ radial-gradient(50rem 40rem at -10% 40%,rgba(229,9,20,.14),transparent 60%),#0b0b0c;background-attachment:fixed}
+.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.03));backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);
+ border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 40px rgba(0,0,0,.45)}
+.glass-red{background:linear-gradient(135deg,rgba(229,9,20,.35),rgba(229,9,20,.08));backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);
+ border:1px solid rgba(255,90,100,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 40px rgba(229,9,20,.35)}
+.btn-red{background:linear-gradient(180deg,#ff4d5a,#e50914);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 28px rgba(229,9,20,.55);transition:.2s}
+.btn-red:hover{filter:brightness(1.12);transform:translateY(-1px)}.btn-red:disabled{opacity:.4;transform:none;box-shadow:none}
+.card{transition:.25s}.card:hover{transform:translateY(-6px) scale(1.03);border-color:rgba(255,90,100,.8);box-shadow:0 0 36px rgba(229,9,20,.45)}
