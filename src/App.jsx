@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Hls from 'hls.js'; // npm i hls.js
 import { videos } from './videos.js';
-import { UPI_ID, PAYEE_NAME, PRICE, DAYS, PAYEE_KEYWORDS } from './config.js';
+import { UPI_ID, PAYEE_NAME, PRICE, DAYS, FACEBOOK, PAYEE_KEYWORDS, SITE_NAME } from './config.js';
+import * as C from './config.js';
+import { analyze } from './verify.js';
+const QR_IMAGE = C.QR_IMAGE || '/photo/qr.jpeg';
+const HERO_IMAGE = C.HERO_IMAGE || '';
 
 const KEY = 'cf_sub_end';
 const getEnd = () => Number(localStorage.getItem(KEY)) || 0;
@@ -21,44 +26,46 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <nav className="glass fixed left-1/2 top-3 z-20 flex w-[94%] max-w-6xl -translate-x-1/2 items-center justify-between gap-3 rounded-full px-5 py-2.5">
-        <a href="#top" className="text-xl font-extrabold tracking-tight">Comedy<span className="text-accent">Flix</span></a>
+        <a href="#top" className="flex items-center gap-2 text-xl font-extrabold tracking-tight"><img src="/photo/logo.png" alt="" className="h-9 w-9 rounded-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />{SITE_NAME.split(' ')[0]} <span className="-ml-1 text-accent">{SITE_NAME.split(' ').slice(1).join(' ')}</span></a>
         <div className="flex items-center gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-24 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm outline-none placeholder:text-white/40 focus:border-accent md:w-52" />
-          <a href="#contact" className="hidden rounded-full px-3 py-1.5 text-sm text-white/70 hover:text-white sm:block">Contact</a>
+          {FACEBOOK && <a href="#contact" className="hidden rounded-full px-3 py-1.5 text-sm text-white/70 hover:text-white sm:block">Contact</a>}
           <button onClick={() => !active && setPay(true)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${active ? 'glass-red' : 'btn-red'}`}>{active ? `Active · ${new Date(end).toLocaleDateString()}` : `Subscribe ₹${PRICE}`}</button>
         </div>
       </nav>
 
       <div id="top" className="px-3 pt-20 md:px-8">
-        {!q && <motion.header initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative mx-auto h-[62vh] min-h-[400px] max-w-6xl overflow-hidden rounded-3xl border border-white/10">
-          <Thumb v={hero} className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0c] via-[#0b0b0c]/40 to-accent/10" />
-          <div className="glass absolute bottom-4 left-4 right-4 max-w-xl rounded-2xl p-5 md:bottom-8 md:left-8 md:p-7">
-            <span className="rounded-full bg-accent/25 px-3 py-1 text-xs font-semibold text-red-300">Featured</span>
-            <h1 className="mt-3 text-3xl font-black md:text-5xl">{hero.title}</h1>
-            <p className="mt-2 text-sm text-white/75 md:text-base">{hero.desc}</p>
-            <div className="mt-4 flex gap-3">
-              <button onClick={() => { open(hero); play(); }} className="btn-red rounded-full px-6 py-2.5 font-bold">▶ Play</button>
-              <button onClick={() => open(hero)} className="glass rounded-full px-6 py-2.5 font-semibold hover:bg-white/10">More info</button>
-            </div>
-          </div>
+        {!q && <motion.header onClick={HERO_IMAGE ? undefined : () => open(hero)} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`relative mx-auto aspect-video w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 ${HERO_IMAGE ? '' : 'max-h-[70vh] cursor-pointer'}`}>
+          {HERO_IMAGE ? <img src={HERO_IMAGE} alt={SITE_NAME} className="h-full w-full object-cover" /> : <>
+            <Thumb v={hero} live className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0c] via-[#0b0b0c]/40 to-accent/10" /></>}
         </motion.header>}
 
         <main className={`mx-auto max-w-6xl space-y-8 py-10 ${q ? 'pt-4' : ''}`}>
           {!cats.length && <p className="text-white/50">Kuch nahi mila.</p>}
           {cats.map((c) => (
             <section key={c}><h2 className="mb-3 text-xl font-bold">{c}</h2>
-              <div className="no-scrollbar flex gap-4 overflow-x-auto px-1 py-4">
+              <div className="no-scrollbar grid grid-cols-1 gap-4 px-1 py-4 sm:flex sm:overflow-x-auto">
                 {list.filter((v) => v.category === c).map((v) => (
-                  <button key={v.id} onClick={() => open(v)} className="card glass relative w-48 flex-none overflow-hidden rounded-2xl text-left md:w-64">
-                    <Thumb v={v} className="aspect-video w-full object-cover" />
+                  <button key={v.id} onClick={() => open(v)} className="card glass relative w-full flex-none overflow-hidden rounded-2xl text-left sm:w-48 md:w-64">
+                    <Thumb v={v} hoverPlay className="aspect-video w-full object-cover" />
                     <div className="p-3"><p className="truncate text-sm font-semibold">{v.title}</p><p className="text-xs text-white/50">{v.mins} min</p></div>
                     {!active && <span className="glass absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs">🔒</span>}
                   </button>))}
               </div></section>))}
         </main>
 
-       
+        <section id="contact" className="mx-auto mb-12 max-w-6xl">
+          {FACEBOOK && <div className="glass rounded-3xl p-6 text-center md:p-10">
+            <p className="text-sm font-semibold uppercase tracking-widest text-accent">Contact</p>
+            <h2 className="mt-2 text-2xl font-extrabold md:text-4xl">Payment ya video me <span className="text-accent">problem?</span></h2>
+            <p className="mx-auto mt-2 max-w-md text-white/60">Seedha message karo, jaldi reply milega.</p>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <a href={FACEBOOK} target="_blank" rel="noreferrer" className="btn-red rounded-full px-7 py-3 font-bold">Facebook</a>
+            </div>
+          </div>}
+          <p className="mt-6 text-center text-xs text-white/40">© {new Date().getFullYear()} {SITE_NAME}</p>
+        </section>
       </div>
 
       <AnimatePresence>
@@ -85,42 +92,66 @@ function Modal({ children, onClose, wide }) {
       <button onClick={onClose} className="glass absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full hover:bg-white/20">✕</button>{children}</motion.div></motion.div>;
 }
 
+async function prep(file) { // OCR ke liye: safed background, sahi size, grayscale; dark-mode screenshot ko ulta karke
+  try {
+    const b = await createImageBitmap(file), k = b.width > 1600 ? 1600 / b.width : b.width < 1000 ? 1000 / b.width : 1, c = document.createElement('canvas');
+    c.width = Math.round(b.width * k); c.height = Math.round(b.height * k);
+    const x = c.getContext('2d', { willReadFrequently: true }); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(b, 0, 0, c.width, c.height);
+    const d = x.getImageData(0, 0, c.width, c.height), p = d.data; let sum = 0, cnt = 0;
+    for (let i = 0; i < p.length; i += 388) { sum += 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]; cnt++; }
+    const dark = sum / cnt < 110;
+    for (let i = 0; i < p.length; i += 4) { const g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]; p[i] = p[i + 1] = p[i + 2] = dark ? 255 - g : g; }
+    x.putImageData(d, 0, 0); return c;
+  } catch { return file; }
+}
 function PayBox({ onDone }) {
-  const [file, setFile] = useState(null), [err, setErr] = useState(''), [busy, setBusy] = useState(false), [utr, setUtr] = useState('');
-  const q = `pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${PRICE}&cu=INR&tn=${encodeURIComponent('ComedyFlix 1 month')}`;
-  const apps = [['Google Pay', `tez://upi/pay?${q}`], ['PhonePe', `phonepe://pay?${q}`], ['Paytm', `paytmmp://pay?${q}`], ['Other UPI', `upi://pay?${q}`]];
-  // Screenshot ka text padhke check: amount, success word, 12-digit transaction ID, (optional) payee naam, aur ID pehle use na hui ho.
+  const [file, setFile] = useState(null), [err, setErr] = useState(''), [busy, setBusy] = useState(false), [utr, setUtr] = useState(''), [noQr, setNoQr] = useState(false);
+  const [seen, setSeen] = useState('');
+  const accept = (f, key) => {
+    if (JSON.parse(localStorage.getItem('cf_used') || '[]').includes(key)) return setErr('Ye transaction ID pehle use ho chuki hai.');
+    setUtr(key); setFile(f); setErr('');
+  };
   const pick = async (e) => {
-    const f = e.target.files[0]; setErr(''); setFile(null); setUtr(''); if (!f) return;
+    const f = e.target.files[0]; setErr(''); setFile(null); setUtr(''); setSeen(''); if (!f) return;
     if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) return setErr('Sirf image (PNG/JPG) upload karo');
-    if (f.size > 5e6) return setErr('Image 5 MB se chhoti honi chahiye');
+    if (f.size > 10e6) return setErr('Image 10 MB se chhoti honi chahiye');
     setBusy(true);
     try {
-      const { default: Tesseract } = await import('tesseract.js');
-      const t = (await Tesseract.recognize(f, 'eng')).data.text || '';
-      const id = (t.match(/\b\d{12}\b/) || [])[0];
-      const miss = [];
-      if (!new RegExp(`\\b${PRICE}(\\.00)?\\b`).test(t)) miss.push(`₹${PRICE} amount`);
-      if (!/success|paid|completed|sent|received/i.test(t)) miss.push('"Successful" status');
-      if (!id) miss.push('12-digit transaction ID');
-      if (PAYEE_KEYWORDS.length && !PAYEE_KEYWORDS.some((k) => t.toLowerCase().includes(k.toLowerCase()))) miss.push('payee ka naam');
-      if (miss.length) setErr(`Ye payment screenshot nahi lag raha. Poora, saaf screenshot daalo jisme dikhe: ${miss.join(', ')}.`);
-      else if (JSON.parse(localStorage.getItem('cf_used') || '[]').includes(id)) setErr('Ye transaction ID pehle use ho chuki hai.');
-      else { setUtr(id); setFile(f); }
+      const T = await import('tesseract.js'), createWorker = T.createWorker || T.default.createWorker;
+      const img = await prep(f), w = await createWorker('eng');
+      let words = '', digits = '';
+      try { // pass 1: poora text, pass 2: sirf numbers (zyada pakka)
+        words = (await w.recognize(img)).data.text || '';
+        await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '0123456789 .' });
+        digits = (await w.recognize(img)).data.text || '';
+      } finally { await w.terminate(); }
+      const r = analyze(words, digits, PRICE, PAYEE_KEYWORDS, Number(C.MAX_AGE_DAYS) || 0, new Date(), UPI_ID);
+      setSeen(words.replace(/\s+/g, ' ').slice(0, 140));
+      const marks = `Receiver UPI ID: ${r.upiOk ? '✓' : '✗'}, ₹${PRICE}: ${r.amount ? '✓' : '✗'}, Paid Successfully: ${r.ok ? '✓' : '✗'}`;
+      if (r.wrongAmount) setErr(`Screenshot me ₹${r.wrongAmount} dikh raha hai, ₹${PRICE} ka payment chahiye.`);
+      else if (r.stale) setErr('Ye purana screenshot lag raha hai. Abhi ke payment ka screenshot daalo.');
+      else if (r.upiOk && r.amount && r.ok && r.payee) accept(f, r.id || `f${f.size}${f.lastModified}`);
+      else setErr(`Screenshot verify nahi hua (${marks}). Aisa saaf screenshot daalo jisme receiver ki UPI ID, ₹${PRICE} aur Paid Successfully teeno dikhein.`);
     } catch { setErr('Screenshot check nahi ho paya. Internet check karke dobara try karo.'); }
     setBusy(false);
   };
   return <div className="p-6">
     <h2 className="pr-10 text-2xl font-extrabold">₹{PRICE} pay karo, <span className="text-accent">{DAYS} din</span> video dekho</h2>
-    <p className="mt-5 text-sm font-semibold text-white/70">Step 1 — Payment karo</p>
-    <div className="mt-2 grid grid-cols-2 gap-2">{apps.map(([n, h]) => <a key={n} href={h} className="glass flex items-center gap-2 rounded-full py-2 pl-2 pr-3 text-sm font-semibold hover:bg-accent/30"><PayIcon name={n} />{n}</a>)}</div>
-    <p className="mt-2 text-xs text-white/50">Payment phone par UPI app se karo (buttons phone par chalte hain).</p>
+    <p className="mt-5 text-sm font-semibold text-white/70">Step 1 — QR scan karke ₹{PRICE} bhejo</p>
+    <div className="mt-3 flex flex-col items-center gap-2">
+      {noQr ? <p className="rounded-xl bg-red-900/40 p-3 text-sm text-red-200">QR file nahi mili. Isko public/photo/qr.jpeg me rakho (naam chhote akshar me).</p>
+        : <img src={QR_IMAGE} alt="Payment QR" onError={() => setNoQr(true)} className="h-64 w-64 rounded-2xl object-contain" />}
+      <div className="flex items-center gap-2"><PayIcon name="Google Pay" /><PayIcon name="PhonePe" /><PayIcon name="Paytm" /></div>
+      <p className="text-center text-xs text-white/60">Computer par ho to phone se scan karo. Phone par ho to <a href={QR_IMAGE} download="payment-qr.jpeg" className="text-accent underline">QR save karo</a>, phir UPI app me scanner ke andar gallery wala icon dabao.</p>
+    </div>
     <p className="mt-5 text-sm font-semibold text-white/70">Step 2 — Payment ka screenshot upload karo</p>
     <input type="file" accept="image/*" onChange={pick} className="glass mt-2 block w-full rounded-xl p-2 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-1.5 file:font-semibold file:text-white" />
-    {busy && <p className="mt-2 text-sm text-white/70">⏳ Screenshot check ho raha hai… (pehli baar thoda time lagta hai)</p>}
+    <p className="mt-1 text-xs text-white/40">Screenshot me teen cheezein dikhni chahiye: receiver ki UPI ID, ₹{PRICE} aur "Paid Successfully".</p>
+    {busy && <p className="mt-2 text-sm text-white/70">⏳ Screenshot check ho raha hai… (pehli baar 10-20 second lag sakte hain)</p>}
     {file && !busy && <p className="mt-2 text-sm text-green-400">✓ Payment screenshot sahi lag raha hai</p>}
     {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
-    <button disabled={!file || busy} onClick={() => onDone(utr)} className="btn-blue mt-5 w-full rounded-full py-3 font-bold">Submit</button>
+    {err && seen && <p className="mt-2 text-[11px] text-white/30">Screenshot se padha: {seen}</p>}
+    <button disabled={!file || busy} onClick={() => onDone(utr)} className="btn-red mt-5 w-full rounded-full py-3 font-bold">Submit</button>
   </div>;
 }
 
@@ -135,33 +166,78 @@ function PayIcon({ name }) {
 
 const ytId = (u) => (u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/) || [])[1];
 const embedUrl = (u) => {
-  const y = ytId(u); if (y) return `https://www.youtube.com/embed/${y}?autoplay=1&rel=0`;
-  const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/); if (vm) return `https://player.vimeo.com/video/${vm[1]}?autoplay=1`;
+  const y = ytId(u); if (y) return `https://www.youtube.com/embed/${y}?rel=0`;
+  const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/); if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
   const d = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/); if (d) return `https://drive.google.com/file/d/${d[1]}/preview`;
   return null;
 };
-const isHls = (u) => /\.m3u8(\?|$)/i.test(u);
 
-// YouTube / Vimeo / Google Drive link -> embed. .m3u8 (HLS) -> hls.js. Baaki (mp4, webm, ogg, mov...) -> normal player.
+// YouTube / Vimeo / Google Drive link -> embed (iframe). .m3u8 (HLS) -> hls.js. Baaki (mp4, webm, ogg, mov...) -> normal player.
+const isHls = (u) => /\.m3u8(?:$|\?)/i.test(u);
+const fixUrl = (u) => u.replace(/(dropbox\.com.*)dl=0/, '$1raw=1');
+
 function Player({ v }) {
-  const ref = useRef(null), [err, setErr] = useState(false);
-  const emb = embedUrl(v.url) || (v.embed ? v.url : null), hls = isHls(v.url);
-  const src = v.url.replace(/(dropbox\.com.*)dl=0/, '$1raw=1');
+  const [err, setErr] = useState(false);
+  const ref = useRef(null);
+  const emb = v.embed || embedUrl(v.url);
+  const hls = isHls(v.url);
+
   useEffect(() => {
-    const el = ref.current; if (!hls || !el) return;
-    if (el.canPlayType('application/vnd.apple.mpegurl')) { el.src = v.url; return; }
-    let h; import('hls.js').then(({ default: Hls }) => { if (!Hls.isSupported()) return setErr(true); h = new Hls(); h.loadSource(v.url); h.attachMedia(el); h.on(Hls.Events.ERROR, (_, d) => d.fatal && setErr(true)); });
-    return () => h && h.destroy();
-  }, [v.url, hls]);
-  if (emb) return <iframe src={emb} className="h-full w-full" allow="autoplay; fullscreen" allowFullScreen title={v.title} />;
-  if (err) return <div className="grid h-full place-items-center p-6 text-center text-sm text-white/70">Ye video format browser me nahi chal raha. Isko MP4 (H.264) me convert karke link do.</div>;
-  return <video ref={ref} src={hls ? undefined : src} controls autoPlay playsInline controlsList="nodownload" onError={() => setErr(true)} className="h-full w-full" />;
+    const el = ref.current;
+    if (!el || emb) return;
+    el.muted = false; // sound ON
+    el.volume = 1;
+    if (hls) {
+      if (el.canPlayType('application/vnd.apple.mpegurl')) {
+        el.src = v.url; // Safari native HLS
+      } else if (Hls.isSupported()) {
+        const h = new Hls();
+        h.loadSource(v.url);
+        h.attachMedia(el);
+        return () => h.destroy();
+      } else setErr(true);
+    }
+  }, [v.url, emb, hls]);
+
+  if (err) return <p className="p-4 text-white">Video load nahi ho pa raha.</p>;
+
+  if (emb) {
+    return (
+      <iframe
+        src={emb}
+        title={v.title}
+        className="h-full w-full"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowFullScreen
+      />
+    );
+  }
+
+  return (
+    <div className="h-full w-full bg-black">
+      <video
+        ref={ref}
+        src={hls ? undefined : fixUrl(v.url)}
+        controls
+        playsInline
+        preload="metadata"
+        referrerPolicy="no-referrer"
+        className="h-full w-full object-contain"
+        onError={() => setErr(true)}
+      />
+    </div>
+  );
 }
 
-// thumb diya hai (ya YouTube link hai) to image; nahi to direct video ka 1 second wala frame.
-function Thumb({ v, className }) {
-  const y = ytId(v.url);
-  if (v.thumb || y) return <img src={v.thumb || `https://img.youtube.com/vi/${y}/hqdefault.jpg`} alt={v.title} loading="lazy" className={className} />;
+// Thumbnail hamesha video se: direct video = uska frame; YouTube/Drive = unka apna thumbnail.
+function Thumb({ v, className, live, hoverPlay }) {
+  const y = ytId(v.url), d = v.url.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if (y) return <img src={`https://img.youtube.com/vi/${y}/hqdefault.jpg`} alt={v.title} loading="lazy" className={className} />;
+  if (d) return <img src={`https://drive.google.com/thumbnail?id=${d[1]}&sz=w800`} alt={v.title} loading="lazy" className={className} />;
   if (v.embed || embedUrl(v.url) || isHls(v.url)) return <div className={className + ' bg-white/10'} />;
-  return <video src={`${v.url}#t=1`} preload="metadata" muted playsInline className={className + ' bg-white/10'} />;
+  const src = fixUrl(v.url);
+  return <video src={live ? src : `${src}#t=0.1`} preload={live ? 'auto' : 'metadata'} autoPlay={live} muted loop playsInline
+    onMouseEnter={hoverPlay ? (e) => e.currentTarget.play().catch(() => {}) : undefined}
+    onMouseLeave={hoverPlay ? (e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0.1; } : undefined}
+    className={className + ' bg-white/10'} />;
 }

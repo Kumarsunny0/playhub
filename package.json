@@ -8,11 +8,12 @@
   "preview": "vite preview"
  },
  "dependencies": {
+  "dashjs": "^5.2.1",
+  "hls.js": "^1.7.4",
+  "motion": "^11.18.0",
   "react": "^18.3.1",
   "react-dom": "^18.3.1",
-  "motion": "^11.18.0",
-  "tesseract.js": "^5.1.1",
-  "hls.js": "^1.5.13"
+  "tesseract.js": "^5.1.1"
  },
  "devDependencies": {
   "@vitejs/plugin-react": "^4.3.1",
