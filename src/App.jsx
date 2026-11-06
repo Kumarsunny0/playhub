@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import Hls from 'hls.js'; // npm i hls.js
 import { videos } from './videos.js';
 import { UPI_ID, PAYEE_NAME, PRICE, DAYS, FACEBOOK, PAYEE_KEYWORDS, SITE_NAME } from './config.js';
 import * as C from './config.js';
@@ -21,7 +20,7 @@ export default function App() {
   const hero = videos.find((v) => v.featured) || videos[0];
   const open = (v) => { setSel(v); setPlaying(false); };
   const play = () => (active ? setPlaying(true) : setPay(true));
-  const paid = (utr) => { localStorage.setItem('cf_used', JSON.stringify([...JSON.parse(localStorage.getItem('cf_used') || '[]'), utr])); const e = Date.now() + DAYS * 864e5; localStorage.setItem(KEY, e); setEnd(e); setNow(Date.now()); setPay(false); setPlaying(true); };
+  const paid = (utr) => { localStorage.setItem('cf_used', JSON.stringify([...JSON.parse(localStorage.getItem('cf_used') || '[]'), utr])); const e = Date.now() + DAYS * 864e5; localStorage.setItem(KEY, e); setEnd(e); setNow(Date.now()); setPay(false); };
 
   return (
     <div className="min-h-screen">
@@ -37,7 +36,7 @@ export default function App() {
       <div id="top" className="px-3 pt-20 md:px-8">
         {!q && <motion.header onClick={HERO_IMAGE ? undefined : () => open(hero)} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`relative mx-auto aspect-video w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 ${HERO_IMAGE ? '' : 'max-h-[70vh] cursor-pointer'}`}>
           {HERO_IMAGE ? <img src={HERO_IMAGE} alt={SITE_NAME} className="h-full w-full object-cover" /> : <>
-            <Thumb v={hero} live className="absolute inset-0 h-full w-full object-cover" />
+            <Thumb v={hero} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0c] via-[#0b0b0c]/40 to-accent/10" /></>}
         </motion.header>}
 
@@ -48,7 +47,7 @@ export default function App() {
               <div className="no-scrollbar grid grid-cols-1 gap-4 px-1 py-4 sm:flex sm:overflow-x-auto">
                 {list.filter((v) => v.category === c).map((v) => (
                   <button key={v.id} onClick={() => open(v)} className="card glass relative w-full flex-none overflow-hidden rounded-2xl text-left sm:w-48 md:w-64">
-                    <Thumb v={v} hoverPlay className="aspect-video w-full object-cover" />
+                    <Thumb v={v} className="aspect-video w-full object-cover" />
                     <div className="p-3"><p className="truncate text-sm font-semibold">{v.title}</p><p className="text-xs text-white/50">{v.mins} min</p></div>
                     {!active && <span className="glass absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs">🔒</span>}
                   </button>))}
@@ -71,7 +70,7 @@ export default function App() {
       <AnimatePresence>
         {sel && <Modal key="v" onClose={() => setSel(null)} wide>
           <div className="aspect-video w-full bg-black">
-            {playing && active ? <Player key={sel.id} v={sel} />
+            {active ? <Player key={sel.id} v={sel} />
               : <div className="relative h-full w-full"><Thumb v={sel} className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0c] to-transparent" />
                 <button onClick={play} className="btn-red absolute bottom-4 left-4 rounded-full px-7 py-2.5 font-bold md:left-8">▶ Play</button></div>}
           </div>
@@ -171,73 +170,30 @@ const embedUrl = (u) => {
   const d = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/); if (d) return `https://drive.google.com/file/d/${d[1]}/preview`;
   return null;
 };
+const isHls = (u) => /\.m3u8(\?|$)/i.test(u);
 
-// YouTube / Vimeo / Google Drive link -> embed (iframe). .m3u8 (HLS) -> hls.js. Baaki (mp4, webm, ogg, mov...) -> normal player.
-const isHls = (u) => /\.m3u8(?:$|\?)/i.test(u);
-const fixUrl = (u) => u.replace(/(dropbox\.com.*)dl=0/, '$1raw=1');
-
+// YouTube / Vimeo / Google Drive link -> embed. .m3u8 (HLS) -> hls.js. Baaki (mp4, webm, ogg, mov...) -> normal player.
 function Player({ v }) {
-  const [err, setErr] = useState(false);
-  const ref = useRef(null);
-  const emb = v.embed || embedUrl(v.url);
-  const hls = isHls(v.url);
-
+  const ref = useRef(null), [err, setErr] = useState(false);
+  const emb = embedUrl(v.url) || (v.embed ? v.url : null), hls = isHls(v.url);
+  const src = v.url.replace(/(dropbox\.com.*)dl=0/, '$1raw=1');
   useEffect(() => {
-    const el = ref.current;
-    if (!el || emb) return;
-    el.muted = false; // sound ON
-    el.volume = 1;
-    if (hls) {
-      if (el.canPlayType('application/vnd.apple.mpegurl')) {
-        el.src = v.url; // Safari native HLS
-      } else if (Hls.isSupported()) {
-        const h = new Hls();
-        h.loadSource(v.url);
-        h.attachMedia(el);
-        return () => h.destroy();
-      } else setErr(true);
-    }
-  }, [v.url, emb, hls]);
-
-  if (err) return <p className="p-4 text-white">Video load nahi ho pa raha.</p>;
-
-  if (emb) {
-    return (
-      <iframe
-        src={emb}
-        title={v.title}
-        className="h-full w-full"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        allowFullScreen
-      />
-    );
-  }
-
-  return (
-    <div className="h-full w-full bg-black">
-      <video
-        ref={ref}
-        src={hls ? undefined : fixUrl(v.url)}
-        controls
-        playsInline
-        preload="metadata"
-        referrerPolicy="no-referrer"
-        className="h-full w-full object-contain"
-        onError={() => setErr(true)}
-      />
-    </div>
-  );
+    const el = ref.current; if (!hls || !el) return;
+    if (el.canPlayType('application/vnd.apple.mpegurl')) { el.src = v.url; return; }
+    let h; import('hls.js').then(({ default: Hls }) => { if (!Hls.isSupported()) return setErr(true); h = new Hls(); h.loadSource(v.url); h.attachMedia(el); h.on(Hls.Events.ERROR, (_, d) => d.fatal && setErr(true)); });
+    return () => h && h.destroy();
+  }, [v.url, hls]);
+  if (emb) return <iframe src={emb} className="h-full w-full" allow="fullscreen" allowFullScreen title={v.title} />;
+  if (err) return <div className="grid h-full place-items-center p-6 text-center text-sm text-white/70">Ye video format browser me nahi chal raha. Isko MP4 (H.264) me convert karke link do.</div>;
+  return <video ref={ref} src={hls ? undefined : `${src}#t=0.1`} preload="metadata" controls playsInline controlsList="nodownload" onError={() => setErr(true)} className="h-full w-full" />;
 }
 
 // Thumbnail hamesha video se: direct video = uska frame; YouTube/Drive = unka apna thumbnail.
-function Thumb({ v, className, live, hoverPlay }) {
+function Thumb({ v, className }) {
   const y = ytId(v.url), d = v.url.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
   if (y) return <img src={`https://img.youtube.com/vi/${y}/hqdefault.jpg`} alt={v.title} loading="lazy" className={className} />;
   if (d) return <img src={`https://drive.google.com/thumbnail?id=${d[1]}&sz=w800`} alt={v.title} loading="lazy" className={className} />;
   if (v.embed || embedUrl(v.url) || isHls(v.url)) return <div className={className + ' bg-white/10'} />;
-  const src = fixUrl(v.url);
-  return <video src={live ? src : `${src}#t=0.1`} preload={live ? 'auto' : 'metadata'} autoPlay={live} muted loop playsInline
-    onMouseEnter={hoverPlay ? (e) => e.currentTarget.play().catch(() => {}) : undefined}
-    onMouseLeave={hoverPlay ? (e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0.1; } : undefined}
-    className={className + ' bg-white/10'} />;
+  const src = v.url.replace(/(dropbox\.com.*)dl=0/, '$1raw=1');
+  return <video src={`${src}#t=0.1`} preload="metadata" muted playsInline className={className + ' bg-white/10'} />; // sirf pehla frame, chalta nahi
 }
